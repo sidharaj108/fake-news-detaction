@@ -3,23 +3,17 @@ import joblib
 import re
 import nltk
 from nltk.corpus import stopwords
-from huggingface_hub import hf_hub_download
 
 st.set_page_config(page_title="Fake News Detector", page_icon="📰", layout="centered")
 
 nltk.download('stopwords', quiet=True)
 stop_words = set(stopwords.words('english'))
 
-# Load Model from Hugging Face (Change this!)
-@st.cache_resource(show_spinner="Downloading model... Please wait")
+# Load model locally from the GitHub repo files
+@st.cache_resource(show_spinner="Loading model... Please wait (first time may be slow)")
 def load_model():
-    MODEL_REPO = "sidharaj/fake-news-model"   # ←←← CHANGE TO YOUR ACTUAL HF MODEL REPO NAME
-    
-    model_path = hf_hub_download(repo_id=MODEL_REPO, filename="fake_news_model.pkl")
-    vectorizer_path = hf_hub_download(repo_id=MODEL_REPO, filename="tfidf_vectorizer.pkl")
-    
-    model = joblib.load(model_path)
-    vectorizer = joblib.load(vectorizer_path)
+    model = joblib.load("fake_news_model.pkl")
+    vectorizer = joblib.load("tfidf_vectorizer.pkl")
     return model, vectorizer
 
 model, vectorizer = load_model()
@@ -27,6 +21,8 @@ model, vectorizer = load_model()
 st.success("✅ Model loaded successfully!")
 
 def preprocess_text(text):
+    if not text or not text.strip():
+        return ""
     text = text.lower()
     text = re.sub(r'http\S+|www\S+|https\S+', '', text, flags=re.MULTILINE)
     text = re.sub(r'[^a-zA-Z\s]', '', text)
@@ -55,7 +51,7 @@ st.markdown("**Trained on ISOT Fake News Dataset (~45,000 articles)**")
 news_input = st.text_area("Paste news article, headline or statement here:", height=250)
 
 if st.button("🔍 Predict", type="primary"):
-    with st.spinner("Analyzing..."):
+    with st.spinner("Analyzing the news..."):
         result, confidence = predict_fake_news(news_input)
         
         if "REAL" in result:
@@ -63,7 +59,7 @@ if st.button("🔍 Predict", type="primary"):
         else:
             st.error(result)
         
-        st.metric("Confidence", f"{confidence}%")
+        st.metric("Confidence Score", f"{confidence}%")
         st.progress(confidence / 100)
 
-st.caption("Built with ❤️ using Streamlit | Model: TF-IDF + Logistic Regression")
+st.caption("Built with Streamlit • TF-IDF + Logistic Regression")
